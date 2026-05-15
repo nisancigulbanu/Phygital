@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import logging
 from backend.config import Settings
 
 try:
     from openai import OpenAI
 except ImportError:  # pragma: no cover
     OpenAI = None
+
+
+logger = logging.getLogger(__name__)
 
 
 class RecommendationService:
@@ -58,11 +62,21 @@ class RecommendationService:
             f"Fiyat: {price:.2f} TL"
         )
 
-        response = self._client.responses.create(
-            model=self.settings.openai_model,
-            input=prompt,
-        )
-        return response.output_text.strip()
+        try:
+            response = self._client.responses.create(
+                model=self.settings.openai_model,
+                input=prompt,
+            )
+            return response.output_text.strip()
+        except Exception:
+            logger.exception("OpenAI recommendation uretilemedi, fallback kullaniliyor.")
+            return self.build_fallback(
+                fabrics=fabrics,
+                quality=quality,
+                brand=brand,
+                eco_score=eco_score,
+                price=price,
+            )
 
     def legacy_quality_from_fabrics(self, fabrics: dict[str, int | float]) -> dict[str, str]:
         """Map simple fabric ratios to the old qualitative labels."""

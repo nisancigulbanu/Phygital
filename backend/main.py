@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from uuid import uuid4
 
 from fastapi import FastAPI
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import get_settings
@@ -61,38 +61,42 @@ async def health() -> HealthResponse:
 
 @app.post("/analyze", response_model=AnalyzeResponse)
 async def analyze(payload: AnalyzeRequest) -> AnalyzeResponse:
-    quality_result = app.state.recommender.legacy_quality_from_fabrics(payload.fabrics)
-    eco_score = app.state.storage.get_brand_score(payload.brand)
-    recommendation = app.state.recommender.generate(
-        fabrics=payload.fabrics,
-        quality=quality_result["grade"],
-        brand=payload.brand,
-        eco_score=eco_score,
-        price=payload.price,
-    )
-    record = app.state.storage.save_analysis(
-        user_id=payload.user_id,
-        brand=payload.brand,
-        price=payload.price,
-        fabrics=payload.fabrics,
-        quality=quality_result["grade"],
-        recommendation=recommendation,
-        product_name=payload.product_name,
-        source_url=payload.source_url,
-    )
-    return AnalyzeResponse(
-        analysis_id=record.analysis_id,
-        fabric={key: value for key, value in payload.fabrics.items() if value > 0},
-        quality=quality_result["grade"],
-        eco_score=record.eco_score,
-        recommendation=recommendation,
-        product_name=payload.product_name,
-    )
+    def _run() -> AnalyzeResponse:
+        quality_result = app.state.recommender.legacy_quality_from_fabrics(payload.fabrics)
+        eco_score = app.state.storage.get_brand_score(payload.brand)
+        recommendation = app.state.recommender.generate(
+            fabrics=payload.fabrics,
+            quality=quality_result["grade"],
+            brand=payload.brand,
+            eco_score=eco_score,
+            price=payload.price,
+        )
+        record = app.state.storage.save_analysis(
+            user_id=payload.user_id,
+            brand=payload.brand,
+            price=payload.price,
+            fabrics=payload.fabrics,
+            quality=quality_result["grade"],
+            recommendation=recommendation,
+            product_name=payload.product_name,
+            source_url=payload.source_url,
+        )
+        return AnalyzeResponse(
+            analysis_id=record.analysis_id,
+            fabric={key: value for key, value in payload.fabrics.items() if value > 0},
+            quality=quality_result["grade"],
+            eco_score=record.eco_score,
+            recommendation=recommendation,
+            product_name=payload.product_name,
+        )
+
+    return await run_in_threadpool(_run)
 
 
 @app.post("/extract-product", response_model=ProductLookupResponse)
 async def extract_product(payload: ProductLookupRequest) -> ProductLookupResponse:
-    return app.state.product_lookup.fetch_product(
+    return await run_in_threadpool(
+        app.state.product_lookup.fetch_product,
         product_url=payload.product_url,
         page_text=payload.page_text,
     )

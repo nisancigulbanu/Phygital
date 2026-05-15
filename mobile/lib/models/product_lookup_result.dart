@@ -1,4 +1,5 @@
 import 'analysis_draft.dart';
+import '../utils/fabric_parser.dart';
 
 class ProductLookupResult {
   ProductLookupResult({
@@ -27,7 +28,10 @@ class ProductLookupResult {
       price: (json['price'] as num?)?.toDouble(),
       imageUrl: json['image_url'] as String? ?? '',
       fabrics: rawFabric.map(
-        (key, value) => MapEntry(key, (value as num?)?.round() ?? 0),
+        (key, value) => MapEntry(
+          FabricParser.normalizeFabricKey(key),
+          (value as num?)?.round() ?? 0,
+        ),
       ),
       extractedText: json['extracted_text'] as String? ?? '',
       notes: json['notes'] as String? ?? '',

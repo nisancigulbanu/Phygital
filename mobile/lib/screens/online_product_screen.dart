@@ -55,6 +55,11 @@ class _OnlineProductScreenState extends State<OnlineProductScreen> {
           ),
         ),
       );
+    } on ApiException catch (error) {
+      setState(() {
+        _isLoading = false;
+        _error = error.message;
+      });
     } catch (_) {
       setState(() {
         _isLoading = false;

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, UTC
+import logging
 from uuid import uuid4
 
 from backend.config import Settings
@@ -11,6 +12,9 @@ try:
 except ImportError:  # pragma: no cover
     Client = None
     create_client = None
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -34,13 +38,17 @@ class StorageService:
         if not brand or self._client is None:
             return None
 
-        response = (
-            self._client.table(self.settings.supabase_brands_table)
-            .select("eco_score")
-            .eq("name", brand)
-            .limit(1)
-            .execute()
-        )
+        try:
+            response = (
+                self._client.table(self.settings.supabase_brands_table)
+                .select("eco_score")
+                .eq("name", brand)
+                .limit(1)
+                .execute()
+            )
+        except Exception:
+            logger.exception("Brand eco score okunamadi: brand=%s", brand)
+            return None
         if response.data:
             return response.data[0].get("eco_score")
         return None
@@ -74,5 +82,8 @@ class StorageService:
             "source_url": source_url,
             "created_at": datetime.now(UTC).isoformat(),
         }
-        self._client.table(self.settings.supabase_analyses_table).insert(payload).execute()
+        try:
+            self._client.table(self.settings.supabase_analyses_table).insert(payload).execute()
+        except Exception:
+            logger.exception("Analiz Supabase'e kaydedilemedi: analysis_id=%s", analysis_id)
         return AnalysisRecord(analysis_id=analysis_id, eco_score=eco_score)

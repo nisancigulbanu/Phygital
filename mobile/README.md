@@ -1,17 +1,22 @@
-# mobile
+# Mobile
 
-A new Flutter project.
+Bu klasor Phygital Flutter istemcisini icerir.
 
-## Getting Started
+## Gelistirme
 
-This project is a starting point for a Flutter application.
+```bash
+flutter pub get
+flutter run -d chrome
+```
 
-A few resources to get you started if this is your first Flutter project:
+Backend varsayilan olarak `http://127.0.0.1:8000` adresine baglanir. Farkli adres kullanacaksan:
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+```bash
+flutter run -d chrome --dart-define=API_BASE_URL=http://127.0.0.1:8000
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Ana Ekranlar
+
+- `lib/screens/capture_screen.dart`: kamera veya galeriden etiket OCR akisi
+- `lib/screens/online_product_screen.dart`: urun URL'si veya ekran goruntusu ile analiz akisi
+- `lib/screens/review_screen.dart`: kullanicinin son kontrol ve duzeltme ekrani

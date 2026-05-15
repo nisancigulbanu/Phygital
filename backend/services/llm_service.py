@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from backend.config import Settings
@@ -15,6 +16,8 @@ SYSTEM_PROMPT = (
     "urun kalitesini anlamalarina yardimci oluyorsun. Kisa, acik ve samimi Turkce "
     "yanit ver. Teknik jargondan kacın."
 )
+
+logger = logging.getLogger(__name__)
 
 
 class LLMService:
@@ -42,13 +45,17 @@ class LLMService:
             f"Alternatifler: {scan_data.get('alternatives', [])}\n"
             "Bu veriler isiginda kisa bir alisveris tavsiyesi ver."
         )
-        response = self._client.messages.create(
-            model=self.settings.anthropic_model,
-            max_tokens=400,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_message}],
-        )
-        return response.content[0].text.strip()
+        try:
+            response = self._client.messages.create(
+                model=self.settings.anthropic_model,
+                max_tokens=400,
+                system=SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": user_message}],
+            )
+            return response.content[0].text.strip()
+        except Exception:
+            logger.exception("Anthropic alisveris tavsiyesi uretilemedi, fallback kullaniliyor.")
+            return self._fallback_advice(scan_data)
 
     def chat_about_scan(self, *, message: str, scan_data: dict[str, Any]) -> str:
         """Reply to a follow-up question about a scan."""
@@ -65,13 +72,22 @@ class LLMService:
             f"Kullanici sorusu: {message}\n"
             "Yaniti 3 cumleyi gecmeden ver."
         )
-        response = self._client.messages.create(
-            model=self.settings.anthropic_model,
-            max_tokens=250,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_message}],
-        )
-        return response.content[0].text.strip()
+        try:
+            response = self._client.messages.create(
+                model=self.settings.anthropic_model,
+                max_tokens=250,
+                system=SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": user_message}],
+            )
+            return response.content[0].text.strip()
+        except Exception:
+            logger.exception("Anthropic chat yaniti uretilemedi, fallback kullaniliyor.")
+            return (
+                f"Soru: {message} "
+                f"Bu urun icin kalite skoru {scan_data.get('quality_score', 'bilinmiyor')} ve "
+                f"baskin kumaslar {scan_data.get('fabric_composition', {})}. "
+                "Dogal lif orani dusukse daha iyi alternatiflere yonelmek mantikli olur."
+            )
 
     def _fallback_advice(self, scan_data: dict[str, Any]) -> str:
         fabrics = scan_data.get("fabric_composition", {})
